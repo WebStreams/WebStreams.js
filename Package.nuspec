@@ -18,8 +18,8 @@
     <dependencies>
       <dependency id="RxJS-Main" version="2.2.23" />
     </dependencies>
-    <files>
-        <file src="content/Scripts/webstream.js" />
-    </files>
   </metadata>
+  <files>
+    <file src="content/Scripts/webstream.js" />
+  </files>
 </package>
