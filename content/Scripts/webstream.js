@@ -9,10 +9,12 @@
         * @param {Object} queryParams The query parameters to append to the path.
         * @param {Object} inputStreams The collection of observables to pipe into
         *   the stream. Note that keys must match those specified on the service.
-        * @return {Boolean} Returns an Rx.Observable which will connect to the 
+        * @param {Object} controlEvents The optional Rx.Subject which receives
+        *   control messages.
+        * @return {Object} Returns an Rx.Observable which will connect to the 
         *   specified path when subscribed to, emitting all received messages.
         */
-        context.WebStream = function (path, queryParams, inputStreams) {
+        context.WebStream = function (path, queryParams, inputStreams, controlEvents) {
             return Rx.Observable.create(function (observer) {
                 var self = {};
                 self.params = queryParams || {};
@@ -59,16 +61,47 @@
 
                     // Close the socket.
                     self.socket.close();
+                    if (controlEvents) {
+                        controlEvents.onNext('disposed');
+                    }
+                };
+
+                self.socket.onopen = function() {
+                    // Subscribe to each input, piping inputs to socket.
+                    for (var i in self.inputs) {
+                        self.subscriptions.push(self.inputs[i].subscribe(function (next) {
+                            // Send a 'Next' event.
+                            self.socket.send('n' + i + '.' + JSON.stringify(next));
+                        },
+                            function (error) {
+                                // Send an 'Error' event.
+                                self.socket.send('e' + i + '.' + JSON.stringify(error));
+                            },
+                            function () {
+                                // Send a 'Completed' event.
+                                self.socket.send('c' + i);
+                            }));
+                    }
+
+                    if (controlEvents) {
+                        controlEvents.onNext('connected');
+                    }
                 };
 
                 // If the socket closes, complete the sequence and unsubscribe from all inputs.
                 self.socket.onclose = function () {
                     observer.onCompleted();
+                    if (controlEvents) {
+                        controlEvents.onNext('closed');
+                    }
                     self.dispose();
                 };
 
                 // If the socket errors, propagate that error and unsubscribe from all inputs.
                 self.socket.onerror = function (error) {
+                    if (controlEvents) {
+                        controlEvents.onNext('error: ' + JSON.stringify(error));
+                    }
                     observer.onError(error);
                     self.dispose();
                 };
@@ -94,22 +127,6 @@
                         }
                     }
                 };
-
-                // Subscribe to each input, piping inputs to socket.
-                for (var i in self.inputs) {
-                    self.subscriptions.push(self.inputs[i].subscribe(function (next) {
-                        // Send a 'Next' event.
-                        self.socket.send('n' + i + '.' + JSON.stringify(next));
-                    },
-                        function (error) {
-                            // Send an 'Error' event.
-                            self.socket.send('e' + i + '.' + JSON.stringify(error));
-                        },
-                        function () {
-                            // Send a 'Completed' event.
-                            self.socket.send('c' + i);
-                        }));
-                }
 
                 // Return the disposal method to the subscriber.
                 return self.dispose;
