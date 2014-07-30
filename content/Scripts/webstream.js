@@ -39,30 +39,36 @@
                         var parts = [];
                         for (var key in object) {
                             var value = object[key];
-                            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(value))
+                            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
                         }
 
-                        return parts.join('&')
+                        return parts.join('&');
                     }
                 }
 
                 // Connect to the uri.
                 self.socket = new WebSocket(self.url);
 
+                self.isDisposed = false;
                 // On disposal, close the socket & unsubscribe from all inputs.
                 self.dispose = function () {
-                    // Unsubscribe from all inputs.
-                    if (self.subscriptions) {
-                        for (var i in self.subscriptions) {
-                            self.subscriptions[i].dispose();
-                        }
-                        self.subscriptions = [];
-                    }
 
-                    // Close the socket.
-                    self.socket.close();
-                    if (controlEvents) {
-                        controlEvents.onNext('disposed');
+                    if (!self.isDisposed) {
+                        // Unsubscribe from all inputs.
+                        if (self.subscriptions) {
+                            for (var i in self.subscriptions) {
+                                self.subscriptions[i].dispose();
+                            }
+                            self.subscriptions = [];
+                        }
+
+                        // Close the socket.
+                        self.socket.close();
+                        if (controlEvents) {
+                            controlEvents.onNext('disposed');
+                        }
+
+                        self.isDisposed = true;
                     }
                 };
 
@@ -70,14 +76,17 @@
                     // Subscribe to each input, piping inputs to socket.
                     for (var i in self.inputs) {
                         self.subscriptions.push(self.inputs[i].subscribe(function (next) {
+                            if (self.isDisposed) return;
                             // Send a 'Next' event.
                             self.socket.send('n' + i + '.' + JSON.stringify(next));
                         },
                             function (error) {
+                                if (self.isDisposed) return;
                                 // Send an 'Error' event.
                                 self.socket.send('e' + i + '.' + JSON.stringify(error));
                             },
                             function () {
+                                if (self.isDisposed) return;
                                 // Send a 'Completed' event.
                                 self.socket.send('c' + i);
                             }));
@@ -90,6 +99,7 @@
 
                 // If the socket closes, complete the sequence and unsubscribe from all inputs.
                 self.socket.onclose = function () {
+                    if (self.isDisposed) return;
                     observer.onCompleted();
                     if (controlEvents) {
                         controlEvents.onNext('closed');
@@ -99,6 +109,7 @@
 
                 // If the socket errors, propagate that error and unsubscribe from all inputs.
                 self.socket.onerror = function (error) {
+                    if (self.isDisposed) return;
                     if (controlEvents) {
                         controlEvents.onNext('error: ' + JSON.stringify(error));
                     }
@@ -108,6 +119,7 @@
 
                 // Each time a message is received, parse it and propagate the results to the observer.
                 self.socket.onmessage = function (message) {
+                    if (self.isDisposed) return;
                     if (message.data.length > 0) {
                         switch (message.data[0]) {
                             case 'n':
