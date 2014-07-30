@@ -75,17 +75,23 @@
                 self.socket.onopen = function() {
                     // Subscribe to each input, piping inputs to socket.
                     for (var i in self.inputs) {
-                        self.subscriptions.push(self.inputs[i].subscribe(function (next) {
-                            if (self.isDisposed) return;
-                            // Send a 'Next' event.
-                            self.socket.send('n' + i + '.' + JSON.stringify(next));
-                        },
-                            function (error) {
+                        self.subscriptions.push(self.inputs[i].subscribe(
+                            function(next) {
+                                if (self.isDisposed) return;
+                                // Send a 'Next' event.
+                                var nextMsg = '';
+                                if (next !== undefined && next !== null) {
+                                    nextMsg = JSON.stringify(next);
+                                }
+
+                                self.socket.send('n' + i + '.' + nextMsg);
+                            },
+                            function(error) {
                                 if (self.isDisposed) return;
                                 // Send an 'Error' event.
                                 self.socket.send('e' + i + '.' + JSON.stringify(error));
                             },
-                            function () {
+                            function() {
                                 if (self.isDisposed) return;
                                 // Send a 'Completed' event.
                                 self.socket.send('c' + i);
