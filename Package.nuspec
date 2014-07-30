@@ -3,7 +3,7 @@
   <metadata>
     <id>Dapr.WebStreamJS</id>
     <title>WebStream.js</title>
-    <version>0.1.4</version>
+    <version>0.1.5</version>
     <authors>Reuben Bond</authors>
     <owners>Dapr Labs</owners>
     <!-- 
@@ -13,11 +13,11 @@
     <projectUrl>https://github.com/daprlabs/WebStreamJS</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Binding between RxJS and WebSockets for use with WebStream servers.</description>
-    <releaseNotes>Improved URL handling and documentation.</releaseNotes>
+    <releaseNotes>Improved error handling.</releaseNotes>
     <copyright>Copyright 2014</copyright>
     <tags>Rx Reactive Web Stream WebStream RxJs</tags>
     <dependencies>
-      <dependency id="RxJS-Main" version="2.2.23" />
+      <dependency id="RxJS-Main" version="2.3.1" />
     </dependencies>
   </metadata>
   <files>
